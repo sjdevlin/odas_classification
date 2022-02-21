@@ -31,6 +31,8 @@
 
         unsigned int nSignals;
         float * array;
+        float * harmonicAcorr;
+        float * realRMS;
 
     } pitches_obj;
 

@@ -48,6 +48,8 @@
 
         dest->timeStamp = src->timeStamp;
         dest->fS = src->fS;
+        //hops_printf(src->hops);
+
         hops_copy(dest->hops, src->hops);
 
     }

@@ -122,6 +122,10 @@ int mod_classify_process(mod_classify_obj *obj)
     float RNow;
     float RNext;
 
+    float totalRealAmplitudeSquared;
+    float meanRealAmplitudeSquared;
+    float realRMS;
+
     if (obj->in1->timeStamp != obj->in2->timeStamp)
     {
         printf("Time stamp mismatch.\n");
@@ -156,11 +160,20 @@ int mod_classify_process(mod_classify_obj *obj)
 
                     //                    frame2freq_process(obj->frame2freq, obj->frames, obj->freqs);
 
+                    totalRealAmplitudeSquared = 0.0f;
+
                     for (iSample = 0; iSample < obj->frame2freq->frameSize; iSample++)
                     {
 
                         obj->frame2freq->frame[iSample] = obj->frame2freq->win->array[iSample] * obj->frames->array[iSignal][iSample];
+                        totalRealAmplitudeSquared += 256*powf(obj->frames->array[iSignal][iSample],2);
                     }
+
+                    // rms NEEDED FOR classification
+                    meanRealAmplitudeSquared = totalRealAmplitudeSquared / (float)obj->frame2freq->frameSize;
+                    obj->pitches->realRMS[iSignal] = sqrt(meanRealAmplitudeSquared) ;
+
+  //                  printf("AS: %3.3f  RMS: %3.3f \n",realAmplitudeSquared,obj->pitches->realRMS[iSignal] );
 
                     fft_r2c(obj->frame2freq->fft,
                             obj->frame2freq->frame,
@@ -182,8 +195,9 @@ int mod_classify_process(mod_classify_obj *obj)
                     }
 
                     fft_c2r(obj->freq2acorr->fft, obj->freq2acorr->arrayIn, obj->freq2acorr->arrayOut);
-
                     memcpy(obj->acorrs->array[iSignal], obj->freq2acorr->arrayOut, sizeof(float) * obj->freq2acorr->halfFrameSize);
+
+
 
                     maxValue = -INFINITY;
                     peakFound = 0x00;
@@ -230,25 +244,19 @@ int mod_classify_process(mod_classify_obj *obj)
 
                     if (peakFound == 0x01)
                     {
-
-                        peakPrev = maxIndex - 1;
-                        peakNow = maxIndex;
-                        peakNext = maxIndex + 1;
-                        RPrev = obj->acorrs->array[iSignal][peakPrev];
-                        RNow = obj->acorrs->array[iSignal][peakNow];
-                        RNext = obj->acorrs->array[iSignal][peakNext];
-
-                        obj->pitches->array[iSignal] = ((float)peakNow) + ((RPrev - RNext) / (2 * RPrev - 4 * RNow + 2 * RNext));
+                        obj->pitches->array[iSignal] = ((float)maxIndex);   
+                        obj->pitches->harmonicAcorr[iSignal] = obj->acorrs->array[iSignal][maxIndex/2] / obj->acorrs->array[iSignal][maxIndex] ;
                     }
                     else
                     {
-
                         obj->pitches->array[iSignal] = 0.0f;
+                        obj->pitches->harmonicAcorr[iSignal] = 0.0f;
                     }
                 }
                 else
                 {
                     obj->pitches->array[iSignal] = 0.0f;
+                    obj->pitches->harmonicAcorr[iSignal] = 0.0f;                    
                 }
             }
 

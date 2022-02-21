@@ -328,8 +328,7 @@
 
     void snk_tracks_process_interface_terminal(snk_tracks_obj * obj) {
 
-//         if (obj->in->tracks->ids[0]!=0 && obj->in->tracks->activity[0]>0.3) printf("%llu %1.3f \n",obj->in->timeStamp,obj->in->tracks->activity[0] );
- //       if (obj->in->tracks->ids[0]!=0) printf("%s",obj->buffer);
+        if (obj->in->tracks->ids[0]!=0) printf("%s",obj->buffer);
 
     }
 
@@ -373,7 +372,7 @@
 
     void snk_tracks_process_format_undefined(snk_tracks_obj * obj) {
 
-        if (obj->in->tracks->ids[0] != 0) printf("id: %llu \n", obj->in->tracks->ids[0]);
+//        if (obj->in->tracks->ids[0] != 0) printf("id: %llu \n", obj->in->tracks->ids[0]);
 
         obj->buffer[0] = 0x00;
         obj->bufferSize = 0;

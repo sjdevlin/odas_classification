@@ -59,8 +59,12 @@
         // sd changed to improve classificaton
         unsigned int classificationPeriod;
         unsigned int * processingTime;
-        unsigned int **activityArray; // 2D array
-        unsigned int *activityTotal; // 1D array
+        unsigned int * numPitchValues;
+        unsigned int ** activityArray; // 2D array
+        unsigned int * activityTotal; // 1D array
+        unsigned int ** pitchArray; // 2D array
+        unsigned int * pitchTotal; // 1D array
+        float        * harmonicAcorrTotal; // 1D array
 
 
     } pitch2category_obj;

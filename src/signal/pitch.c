@@ -30,8 +30,16 @@
         obj = (pitches_obj *) malloc(sizeof(pitches_obj));
 
         obj->nSignals = nSignals;
+
         obj->array = (float *) malloc(sizeof(float) * nSignals);
         memset(obj->array, 0x00, sizeof(float) * nSignals);
+
+        obj->harmonicAcorr = (float *) malloc(sizeof(float) * nSignals);
+        memset(obj->harmonicAcorr, 0x00, sizeof(float) * nSignals);
+
+        obj->realRMS = (float *) malloc(sizeof(float) * nSignals);
+        memset(obj->realRMS, 0x00, sizeof(float) * nSignals);
+
 
         return obj;
 
@@ -40,6 +48,8 @@
     void pitches_destroy(pitches_obj * obj) {
 
         free((void *) obj->array);
+        free((void *) obj->harmonicAcorr);
+        free((void *) obj->realRMS);
         free((void *) obj);
 
     }
@@ -47,12 +57,16 @@
     void pitches_copy(pitches_obj * dest, const pitches_obj * src) {
 
         memcpy(dest->array, src->array, sizeof(float) * src->nSignals);
+        memcpy(dest->harmonicAcorr, src->harmonicAcorr, sizeof(float) * src->nSignals);
+        memcpy(dest->realRMS, src->realRMS, sizeof(float) * src->nSignals);
 
     }
 
     void pitches_zero(pitches_obj * obj) {
 
         memset(obj->array, 0x00, sizeof(float) * obj->nSignals);
+        memset(obj->harmonicAcorr, 0x00, sizeof(float) * obj->nSignals);
+        memset(obj->realRMS, 0x00, sizeof(float) * obj->nSignals);
 
     }
 
