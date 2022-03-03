@@ -132,8 +132,6 @@
             exit(EXIT_FAILURE);
         }
 
-        printf("opened file ok\n");
-
     }
 
     void src_hops_open_interface_soundcard(src_hops_obj * obj) {

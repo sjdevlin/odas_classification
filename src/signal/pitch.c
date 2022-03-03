@@ -31,8 +31,8 @@
 
         obj->nSignals = nSignals;
 
-        obj->array = (float *) malloc(sizeof(float) * nSignals);
-        memset(obj->array, 0x00, sizeof(float) * nSignals);
+        obj->array = (unsigned int *) malloc(sizeof(unsigned int) * nSignals);
+        memset(obj->array, 0x00, sizeof(unsigned int) * nSignals);
 
         obj->harmonicAcorr = (float *) malloc(sizeof(float) * nSignals);
         memset(obj->harmonicAcorr, 0x00, sizeof(float) * nSignals);
@@ -56,7 +56,7 @@
 
     void pitches_copy(pitches_obj * dest, const pitches_obj * src) {
 
-        memcpy(dest->array, src->array, sizeof(float) * src->nSignals);
+        memcpy(dest->array, src->array, sizeof(unsigned int) * src->nSignals);
         memcpy(dest->harmonicAcorr, src->harmonicAcorr, sizeof(float) * src->nSignals);
         memcpy(dest->realRMS, src->realRMS, sizeof(float) * src->nSignals);
 
@@ -64,7 +64,7 @@
 
     void pitches_zero(pitches_obj * obj) {
 
-        memset(obj->array, 0x00, sizeof(float) * obj->nSignals);
+        memset(obj->array, 0x00, sizeof(unsigned int) * obj->nSignals);
         memset(obj->harmonicAcorr, 0x00, sizeof(float) * obj->nSignals);
         memset(obj->realRMS, 0x00, sizeof(float) * obj->nSignals);
 
@@ -76,7 +76,7 @@
 
         for (iSignal = 0; iSignal < obj->nSignals; iSignal++) {
 
-            printf("(%02u): %1.5f\n",iSignal,obj->array[iSignal]);
+            printf("(%02u): %d\n",iSignal,obj->array[iSignal]);
 
         }
 

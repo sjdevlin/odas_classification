@@ -328,7 +328,7 @@
 
     void snk_tracks_process_interface_terminal(snk_tracks_obj * obj) {
 
-        if (obj->in->tracks->ids[0]!=0) printf("%s",obj->buffer);
+        if (obj->in->timeStamp%50 == 0) printf("%s",obj->buffer);
 
     }
 

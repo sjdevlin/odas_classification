@@ -138,7 +138,7 @@ int mod_classify_process(mod_classify_obj *obj)
         if (obj->enabled == 1)
         {
 
-            //            hop2frame_process(obj->hop2frame, obj->in1->hops, obj->frames);
+            //   Here we need to make sure we only process this once !
 
             for (iSignal = 0; iSignal < obj->in2->tracks->nTracks; iSignal++)
             {
@@ -166,7 +166,7 @@ int mod_classify_process(mod_classify_obj *obj)
                     {
 
                         obj->frame2freq->frame[iSample] = obj->frame2freq->win->array[iSample] * obj->frames->array[iSignal][iSample];
-                        totalRealAmplitudeSquared += 256*powf(obj->frames->array[iSignal][iSample],2);
+                        totalRealAmplitudeSquared += 1024*powf(obj->frames->array[iSignal][iSample],2);
                     }
 
                     // rms NEEDED FOR classification
@@ -244,18 +244,29 @@ int mod_classify_process(mod_classify_obj *obj)
 
                     if (peakFound == 0x01)
                     {
-                        obj->pitches->array[iSignal] = ((float)maxIndex);   
-                        obj->pitches->harmonicAcorr[iSignal] = obj->acorrs->array[iSignal][maxIndex/2] / obj->acorrs->array[iSignal][maxIndex] ;
+                        obj->pitches->array[iSignal] = 16000 / maxIndex  ; // change to use freq from config
+//                        obj->pitches->harmonicAcorr[iSignal] = obj->acorrs->array[iSignal][maxIndex/2] / obj->acorrs->array[iSignal][maxIndex] ;
+
+                        if (maxIndex < obj->acorr2pitch->halfFrameSize ) 
+                        {
+                            obj->pitches->harmonicAcorr[iSignal] = obj->acorrs->array[iSignal][maxIndex*2] / obj->acorrs->array[iSignal][maxIndex] ;
+                        } else
+                        {
+                            obj->pitches->harmonicAcorr[iSignal] =0.0f;
+                        }
+
+
+
                     }
                     else
                     {
-                        obj->pitches->array[iSignal] = 0.0f;
+                        obj->pitches->array[iSignal] = 0;
                         obj->pitches->harmonicAcorr[iSignal] = 0.0f;
                     }
                 }
                 else
                 {
-                    obj->pitches->array[iSignal] = 0.0f;
+                    obj->pitches->array[iSignal] = 0;
                     obj->pitches->harmonicAcorr[iSignal] = 0.0f;                    
                 }
             }

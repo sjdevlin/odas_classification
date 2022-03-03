@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "*.tcc": "c",
+        "pitch2category.h": "c",
+        "hop2frame.h": "c",
+        "frame2freq.h": "c",
+        "freq2acorr.h": "c",
+        "acorr2pitch.h": "c",
+        "mod_resample.h": "c",
+        "mod_classify.h": "c"
+    }
+}

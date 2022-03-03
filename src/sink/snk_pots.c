@@ -332,7 +332,7 @@
 
     void snk_pots_process_interface_terminal(snk_pots_obj * obj) {
 
-        printf("%s",obj->buffer);
+       if (obj->in->timeStamp%50 == 0) printf("%s",obj->buffer);
 
     }
 

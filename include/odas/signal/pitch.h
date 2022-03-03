@@ -30,7 +30,7 @@
     typedef struct pitches_obj {
 
         unsigned int nSignals;
-        float * array;
+        unsigned int * array;
         float * harmonicAcorr;
         float * realRMS;
 
