@@ -39,6 +39,10 @@
             memset(obj->array[iSignal], 0x00, frameSize * sizeof(float));
         }
 
+        obj->numHops = (unsigned int *) malloc(sizeof(unsigned int) * nSignals);
+        memset(obj->numHops, 0x00, nSignals * sizeof(unsigned int));
+
+
         return obj;
 
     }
@@ -59,6 +63,10 @@
             memcpy(clone->array[iSignal], obj->array[iSignal], obj->frameSize * sizeof(float));
         }
 
+        clone->numHops = (unsigned int *) malloc(sizeof(unsigned int) * obj->nSignals);
+        memcpy(clone->numHops, obj->numHops, obj->nSignals * sizeof(unsigned int));
+
+
         return clone;
 
     }
@@ -71,7 +79,8 @@
             free((void *) obj->array[iSignal]);
         }
     	free((void *) obj->array);
-
+    	free((void *) obj->numHops);
+        
         free((void *) obj);
 
     }

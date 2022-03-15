@@ -60,6 +60,8 @@
         unsigned int classificationPeriod;
         unsigned int * processingTime;
         unsigned int * numPitchValues;
+        unsigned int ** rmsArray; // 2D array
+        unsigned int * rmsTotal; // 1D array
         unsigned int ** activityArray; // 2D array
         unsigned int * activityTotal; // 1D array
         unsigned int ** pitchArray; // 2D array
@@ -73,6 +75,6 @@
 
     void pitch2category_destroy(pitch2category_obj * obj);
 
-    void pitch2category_process(pitch2category_obj * obj, const pitches_obj * pitches, const tracks_obj * tracks, categories_obj * categories);
+    void pitch2category_process(pitch2category_obj * obj, const pitches_obj * pitches, const tracks_obj * tracks, categories_obj * categories, const unsigned int iSep);
 
 #endif

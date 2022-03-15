@@ -83,6 +83,7 @@ pitch2category_obj *pitch2category_construct_zero(const unsigned int nSeps, cons
 
     obj->pitchArray = (unsigned int **)malloc(sizeof(unsigned int *) * nSeps);
     obj->activityArray = (unsigned int **)malloc(sizeof(unsigned int *) * nSeps);
+    obj->rmsArray = (unsigned int **)malloc(sizeof(unsigned int *) * nSeps);
 
     for (iSep = 0; iSep < nSeps; iSep++)
     {
@@ -90,12 +91,16 @@ pitch2category_obj *pitch2category_construct_zero(const unsigned int nSeps, cons
         memset(obj->pitchArray[iSep], 0x00, sizeof(unsigned int) * classificationPeriod);
         obj->activityArray[iSep] = (unsigned int *)malloc(sizeof(unsigned int) * classificationPeriod);
         memset(obj->activityArray[iSep], 0x00, sizeof(unsigned int) * classificationPeriod);
+        obj->rmsArray[iSep] = (unsigned int *)malloc(sizeof(unsigned int) * classificationPeriod);
+        memset(obj->rmsArray[iSep], 0x00, sizeof(unsigned int) * classificationPeriod);
     }
 
     obj->pitchTotal = (unsigned int *)malloc(sizeof(unsigned int) * nSeps);
     memset(obj->pitchTotal, 0x00, sizeof(unsigned int) * nSeps);
     obj->activityTotal = (unsigned int *)malloc(sizeof(unsigned int) * nSeps);
     memset(obj->activityTotal, 0x00, sizeof(unsigned int) * nSeps);
+    obj->rmsTotal = (unsigned int *)malloc(sizeof(unsigned int) * nSeps);
+    memset(obj->rmsTotal, 0x00, sizeof(unsigned int) * nSeps);
     obj->harmonicAcorrTotal = (float *)malloc(sizeof(float) * nSeps);
     memset(obj->harmonicAcorrTotal, 0x00, sizeof(float) * nSeps);
 
@@ -121,116 +126,105 @@ void pitch2category_destroy(pitch2category_obj *obj)
     free((void *)obj->numPitchValues);
     free((void *)obj->activityArray);
     free((void *)obj->activityTotal);
+    free((void *)obj->rmsArray);
+    free((void *)obj->rmsTotal);
     free((void *)obj->processingTime);
 
     free((void *)obj);
 }
 
-void pitch2category_process(pitch2category_obj *obj, const pitches_obj *pitches, const tracks_obj *tracks, categories_obj *categories)
+void pitch2category_process(pitch2category_obj *obj, const pitches_obj *pitches, const tracks_obj *tracks, categories_obj *categories, const unsigned int iSep)
 {
-
-    unsigned int iSep;
-    float deltaPitch;
-
     int i;
-    float amplitudeMean, pitchMean, harmonicAcorrMean;
-    float amplitudeDiff, pitchDiff;
-    float totalAmpDiffSquared, totalPitchDiffSquared;
-    float relAmpVariance, relPitchVariance;
+    float deltaPitch;
+    float rmsMean, activityMean, pitchMean, harmonicAcorrMean;
+    float activityDiff, rmsDiff, pitchDiff;
+    float totalRmsDiffSquared, totalActivityDiffSquared, totalPitchDiffSquared;
+    float relActivityVariance, relRmsVariance, relPitchVariance;
 
-    for (iSep = 0; iSep < obj->nSeps; iSep++)
+    // add activity to array
+    obj->activityArray[iSep][obj->processingTime[iSep]] = tracks->activity[iSep] * 100;
+//    printf ("%d ", obj->activityArray[iSep][obj->processingTime[iSep]]);
+    // also calculate activity total for variance analysis
+    obj->activityTotal[iSep] += obj->activityArray[iSep][obj->processingTime[iSep]]; // to avoid iterating a second time
+
+    // add rms to array
+    obj->rmsArray[iSep][obj->processingTime[iSep]] = pitches->realRMS[iSep];
+    // also calculate rms total for variance analysis
+    obj->rmsTotal[iSep] += obj->rmsArray[iSep][obj->processingTime[iSep]]; // to avoid iterating a second time
+
+    if (pitches->array[iSep] > 0) // skip analysis when no peak found
+    {
+        obj->pitchArray[iSep][obj->numPitchValues[iSep]] = pitches->array[iSep];
+        obj->pitchTotal[iSep] += obj->pitchArray[iSep][obj->numPitchValues[iSep]];
+        obj->harmonicAcorrTotal[iSep] += pitches->harmonicAcorr[iSep];
+        ++obj->numPitchValues[iSep];
+    }
+
+    // when classification period is ended do all the processing
+
+    if (obj->processingTime[iSep] == obj->classificationPeriod) // we have reached time to classify as speech
     {
 
-        if (tracks->ids[iSep] != 0)
+        // calculate mean of activity
+        activityMean = (float)obj->activityTotal[iSep] / (float)obj->classificationPeriod;
+        // calculate mean of rms
+        rmsMean = (float)obj->rmsTotal[iSep] / (float)obj->classificationPeriod;
+
+        if (obj->numPitchValues[iSep] != 0)
         {
-
-            if (obj->processingTime[iSep] < obj->classificationPeriod) // increment so we know how long we have been looking
-
-            {
-                // add activity to array
-                obj->activityArray[iSep][obj->processingTime[iSep]] = pitches->realRMS[iSep];
-                // also calculate activity total for variance analysis
-                obj->activityTotal[iSep] += obj->activityArray[iSep][obj->processingTime[iSep]]; // to avoid iterating a second time
-
-                if (pitches->array[iSep] > 0) // skip analysis when no peak found
-                {
-                    obj->pitchArray[iSep][obj->numPitchValues[iSep]] = pitches->array[iSep];
-                    obj->pitchTotal[iSep] += obj->pitchArray[iSep][obj->numPitchValues[iSep]];
-                    obj->harmonicAcorrTotal[iSep] += pitches->harmonicAcorr[iSep];
-                    ++obj->numPitchValues[iSep];
-                }
-            }
-            else if (obj->processingTime[iSep] == obj->classificationPeriod) // we have reached time to classify as speech
-            {
-
-                // calculate mean of activity
-                amplitudeMean = (float)obj->activityTotal[iSep] / (float)obj->classificationPeriod;
-
-                if (obj->numPitchValues[iSep] != 0)
-                {
-                    pitchMean = (float)obj->pitchTotal[iSep] / (float)obj->numPitchValues[iSep]; // consider changing to int for spped 
-                    harmonicAcorrMean = obj->harmonicAcorrTotal[iSep] / (float)obj->numPitchValues[iSep];
-                }
-                else
-                {
-                    pitchMean = 0.0f;
-                    harmonicAcorrMean = 0.0f;
-                }
-
-                totalAmpDiffSquared = 0.0f;
-                totalPitchDiffSquared = 0.0f;
-
-                // relative variance of amplitide
-
-                for (i = 0; i < obj->classificationPeriod; i++)
-                {
-//                    printf (" %d,", obj->activityArray[iSep][i]);
-                    amplitudeDiff = (float)obj->activityArray[iSep][i] - amplitudeMean;
-                    totalAmpDiffSquared += (amplitudeDiff * amplitudeDiff);  // consider changing to powf
-                }
-
-                // relative variance of pitch
-
-                for (i = 0; i < obj->numPitchValues[iSep]; i++)
-                {
-                    pitchDiff = (float)obj->pitchArray[iSep][i] - pitchMean;  //consider changing to int
-                    totalPitchDiffSquared += (pitchDiff * pitchDiff);  // consider powf?
-                }
-
-                // rel variance is variance / mean ^2
-
-                relAmpVariance = (totalAmpDiffSquared / (float)obj->classificationPeriod) / (amplitudeMean * amplitudeMean);
-
-                if (obj->numPitchValues[iSep] != 0)
-                {
-                    relPitchVariance = (totalPitchDiffSquared / (float)obj->numPitchValues[iSep]) / (pitchMean * pitchMean);
-                }
-                else
-                {
-                    relPitchVariance = 0.0f;
-                }
-
-                if (amplitudeMean > 0.3) printf("%llu, %3.2f, %2.2f, %2.2f, %2.2f,%d \n", tracks->ids[iSep], pitchMean, relPitchVariance, relAmpVariance, harmonicAcorrMean, obj->numPitchValues[iSep]);
-//                printf("\nT, %llu, tot diff squared, %5.5f, Amp Mean, %5.5f, Amp Total, %d", tracks->ids[iSep], totalAmpDiffSquared ,amplitudeMean, obj->activityTotal[iSep]); 
-
-            }
-            ++obj->processingTime[iSep];
+            pitchMean = (float)obj->pitchTotal[iSep] / (float)obj->numPitchValues[iSep]; // consider changing to int for spped
+            harmonicAcorrMean = obj->harmonicAcorrTotal[iSep] / (float)obj->numPitchValues[iSep];
         }
         else
         {
-
-            obj->tausNow[iSep] = 0.0f;
-            obj->deltaTausNow[iSep] = 0.0f;
-            obj->phisNow[iSep] = 0.0f;
-            obj->vs[iSep] = 0.0f;
-            obj->rs[iSep] = 0.0f;
-            obj->categories[iSep] = 0x00;
-            // added for amplitude variance analysis
-            obj->processingTime[iSep] = 0;
-            obj->activityTotal[iSep] = 0;
-            obj->numPitchValues[iSep] = 0;
-            obj->pitchTotal[iSep] = 0;
-            obj->harmonicAcorrTotal[iSep] = 0.0f;
+            pitchMean = 0.0f;
+            harmonicAcorrMean = 0.0f;
         }
+
+        totalActivityDiffSquared = 0.0f;
+        totalRmsDiffSquared = 0.0f;
+        totalPitchDiffSquared = 0.0f;
+
+        // relative variance of amplitide and E (for comparison)
+
+        for (i = 0; i < obj->classificationPeriod; i++)
+        {
+            //                    printf (" %d,", obj->activityArray[iSep][i]);
+            activityDiff = (float)obj->activityArray[iSep][i] - activityMean;
+            totalActivityDiffSquared += (activityDiff * activityDiff); // consider changing to powf
+
+            rmsDiff = (float)obj->rmsArray[iSep][i] - rmsMean;
+            totalRmsDiffSquared += (rmsDiff * rmsDiff); // consider changing to powf
+        }
+
+        // relative variance of pitch
+
+        for (i = 0; i < obj->numPitchValues[iSep]; i++)
+        {
+            pitchDiff = (float)obj->pitchArray[iSep][i] - pitchMean; //consider changing to int
+            totalPitchDiffSquared += (pitchDiff * pitchDiff);        // consider powf?
+        }
+
+        // rel variance is variance / mean ^2
+
+       relActivityVariance = (totalActivityDiffSquared / (float)obj->classificationPeriod) / (activityMean * activityMean);
+//    printf("Act mean: %2.3f, Act Diff Sq: %2.3f \n" ,  activityMean, totalActivityDiffSquared);
+       relRmsVariance = (totalRmsDiffSquared / (float)obj->classificationPeriod) / (rmsMean * rmsMean);
+ 
+        if (obj->numPitchValues[iSep] != 0)
+        {
+            relPitchVariance = (totalPitchDiffSquared / (float)obj->numPitchValues[iSep]) / (pitchMean * pitchMean);
+        }
+        else
+        {
+            relPitchVariance = 0.0f;
+        }
+
+        printf("%llu, %3.2f, %2.2f, %2.2f, %2.2f, %2.2f, %d \n", tracks->ids[iSep], pitchMean, relPitchVariance, relRmsVariance, relActivityVariance, harmonicAcorrMean, obj->numPitchValues[iSep]);
+        //                printf("\nT, %llu, tot diff squared, %5.5f, Amp Mean, %5.5f, Amp Total, %d", tracks->ids[iSep], totalAmpDiffSquared ,amplitudeMean, obj->activityTotal[iSep]);
+
+        // reset everything to zero
     }
+
 }

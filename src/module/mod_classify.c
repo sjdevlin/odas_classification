@@ -137,15 +137,12 @@ int mod_classify_process(mod_classify_obj *obj)
 
         if (obj->enabled == 1)
         {
-
             //   Here we need to make sure we only process this once !
-
             for (iSignal = 0; iSignal < obj->in2->tracks->nTracks; iSignal++)
             {
 
-                if (obj->in2->tracks->ids[iSignal] != 0 && obj->in2->tracks->activity[iSignal] > obj->pitch2category->activityMin)
+                if (obj->in2->tracks->ids[iSignal] != 0)
                 {
-
                     memmove(&(obj->hop2frame->array[iSignal][0]),
                             &(obj->hop2frame->array[iSignal][obj->hop2frame->hopSize]),
                             sizeof(float) * (obj->hop2frame->frameSize - obj->hop2frame->hopSize));
@@ -158,120 +155,143 @@ int mod_classify_process(mod_classify_obj *obj)
                            obj->hop2frame->array[iSignal],
                            sizeof(float) * obj->hop2frame->frameSize);
 
-                    //                    frame2freq_process(obj->frame2freq, obj->frames, obj->freqs);
+                    // We only want to do the following processes every time we get to
+                    // half the classification frame size (for each signal)
 
-                    totalRealAmplitudeSquared = 0.0f;
-
-                    for (iSample = 0; iSample < obj->frame2freq->frameSize; iSample++)
+                    //                    if (obj->frames->numHops[iSignal] == obj->frame2freq->frameSize / obj->hop2frame->frameSize)
+                    if (obj->pitch2category->processingTime[iSignal] <= obj->pitch2category->classificationPeriod)
                     {
-
-                        obj->frame2freq->frame[iSample] = obj->frame2freq->win->array[iSample] * obj->frames->array[iSignal][iSample];
-                        totalRealAmplitudeSquared += 1024*powf(obj->frames->array[iSignal][iSample],2);
-                    }
-
-                    // rms NEEDED FOR classification
-                    meanRealAmplitudeSquared = totalRealAmplitudeSquared / (float)obj->frame2freq->frameSize;
-                    obj->pitches->realRMS[iSignal] = sqrt(meanRealAmplitudeSquared) ;
-
-  //                  printf("AS: %3.3f  RMS: %3.3f \n",realAmplitudeSquared,obj->pitches->realRMS[iSignal] );
-
-                    fft_r2c(obj->frame2freq->fft,
-                            obj->frame2freq->frame,
-                            obj->freqs->array[iSignal]);
-
-                    memset(obj->freq2acorr->arrayIn, 0x00, sizeof(float) * obj->freq2acorr->halfFrameSize * 2);
-
-                    //        freq2acorr_process(obj->freq2acorr, obj->freqs, obj->in2->tracks, obj->acorrs);
-
-                    for (iBin = 0; iBin < obj->freq2acorr->halfFrameSize; iBin++)
-                    {
-
-                        Yreal = obj->freqs->array[iSignal][iBin * 2 + 0];
-                        Yimag = obj->freqs->array[iSignal][iBin * 2 + 1];
-                        Ypwr = Yreal * Yreal + Yimag * Yimag;
-
-                        obj->freq2acorr->arrayIn[iBin * 2 + 0] = Ypwr;
-                        obj->freq2acorr->arrayIn[iBin * 2 + 1] = 0.0f;
-                    }
-
-                    fft_c2r(obj->freq2acorr->fft, obj->freq2acorr->arrayIn, obj->freq2acorr->arrayOut);
-                    memcpy(obj->acorrs->array[iSignal], obj->freq2acorr->arrayOut, sizeof(float) * obj->freq2acorr->halfFrameSize);
-
-
-
-                    maxValue = -INFINITY;
-                    peakFound = 0x00;
-
-                    for (iBin = obj->acorr2pitch->winSize; iBin < (obj->acorr2pitch->halfFrameSize - obj->acorr2pitch->winSize); iBin++)
-                    {
-
-                        peakValue = obj->acorrs->array[iSignal][iBin];
-                        isPeak = 0x01;
-//                        if (peakValue > 0.05) (printf("accor %2.2f\n", peakValue));
-
-                        // SD Changes to improve classification
-                        if (peakValue > obj->pitch2category->acorrMin)
+                        ++obj->frames->numHops[iSignal];
+                        if (obj->frames->numHops[iSignal] == 4)
                         {
 
-                            for (iWin = -1 * ((signed int)(obj->acorr2pitch->winSize)); iWin <= ((signed int)(obj->acorr2pitch->winSize)); iWin++)
+//                            printf("Hop2 Frame HS: %d,Freq 2 Frame FS: %d, NumSig: %d, Target: %d \n", obj->hop2frame->hopSize, obj->frame2freq->frameSize, obj->frames->numHops[iSignal], (obj->frames->frameSize / obj->hop2frame->frameSize));
+
+                            //                            printf("Process Time for track %llu: %d\n", obj->in2->tracks->ids[iSignal],obj->pitch2category->processingTime[iSignal]);
+                            obj->frames->numHops[iSignal] = 0;
+                            totalRealAmplitudeSquared = 0.0f;
+
+                            for (iSample = 0; iSample < obj->frame2freq->frameSize; iSample++)
                             {
+                                // this is where windowing happens - remove the product with win->array to use rectangular window
 
-                                iSample = iBin + iWin;
-                                nextValue = obj->acorrs->array[iSignal][iSample];
-
-                                if ((iWin != 0) && (peakValue <= nextValue))
-                                {
-
-                                    isPeak = 0x00;
-                                    break;
-                                }
+                                obj->frame2freq->frame[iSample] = obj->frame2freq->win->array[iSample] * obj->frames->array[iSignal][iSample];
+                                //                                obj->frame2freq->frame[iSample] = obj->frames->array[iSignal][iSample];
+                                totalRealAmplitudeSquared += 1024 * powf(obj->frames->array[iSignal][iSample], 2);
                             }
 
-                            if (isPeak == 0x01)
+                            // rms NEEDED FOR classification
+                            meanRealAmplitudeSquared = totalRealAmplitudeSquared / (float)obj->frame2freq->frameSize;
+                            obj->pitches->realRMS[iSignal] = sqrt(meanRealAmplitudeSquared);
+
+                            if (obj->in2->tracks->activity[iSignal] > obj->pitch2category->activityMin)
                             {
 
-                                if (peakValue > maxValue)
+                                fft_r2c(obj->frame2freq->fft,
+                                        obj->frame2freq->frame,
+                                        obj->freqs->array[iSignal]);
+
+                                memset(obj->freq2acorr->arrayIn, 0x00, sizeof(float) * obj->freq2acorr->halfFrameSize * 2);
+
+                                for (iBin = 0; iBin < obj->freq2acorr->halfFrameSize; iBin++)
                                 {
 
-                                    maxValue = peakValue;
-                                    maxIndex = iBin;
+                                    Yreal = obj->freqs->array[iSignal][iBin * 2 + 0];
+                                    Yimag = obj->freqs->array[iSignal][iBin * 2 + 1];
+                                    Ypwr = Yreal * Yreal + Yimag * Yimag;
 
-                                    peakFound = 0x01;
+                                    obj->freq2acorr->arrayIn[iBin * 2 + 0] = Ypwr;
+                                    obj->freq2acorr->arrayIn[iBin * 2 + 1] = 0.0f;
+                                }
+
+                                fft_c2r(obj->freq2acorr->fft, obj->freq2acorr->arrayIn, obj->freq2acorr->arrayOut);
+                                memcpy(obj->acorrs->array[iSignal], obj->freq2acorr->arrayOut, sizeof(float) * obj->freq2acorr->halfFrameSize);
+
+                                maxValue = -INFINITY;
+                                peakFound = 0x00;
+
+                                for (iBin = obj->acorr2pitch->winSize; iBin < (obj->acorr2pitch->halfFrameSize - obj->acorr2pitch->winSize); iBin++)
+                                {
+
+                                    peakValue = obj->acorrs->array[iSignal][iBin];
+                                    isPeak = 0x01;
+                                    //                        if (peakValue > 0.05) (printf("accor %2.2f\n", peakValue));
+
+                                    // SD Changes to improve classification
+                                    if (peakValue > obj->pitch2category->acorrMin)
+                                    {
+
+                                        for (iWin = -1 * ((signed int)(obj->acorr2pitch->winSize)); iWin <= ((signed int)(obj->acorr2pitch->winSize)); iWin++)
+                                        {
+
+                                            iSample = iBin + iWin;
+                                            nextValue = obj->acorrs->array[iSignal][iSample];
+
+                                            if ((iWin != 0) && (peakValue <= nextValue))
+                                            {
+
+                                                isPeak = 0x00;
+                                                break;
+                                            }
+                                        }
+
+                                        if (isPeak == 0x01)
+                                        {
+
+                                            if (peakValue > maxValue)
+                                            {
+
+                                                maxValue = peakValue;
+                                                maxIndex = iBin;
+
+                                                peakFound = 0x01;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (peakFound == 0x01)
+                                {
+                                    obj->pitches->array[iSignal] = 16000 / maxIndex; // change to use freq from config
+                                                                                     //                        obj->pitches->harmonicAcorr[iSignal] = obj->acorrs->array[iSignal][maxIndex/2] / obj->acorrs->array[iSignal][maxIndex] ;
+
+                                    if (maxIndex < obj->acorr2pitch->halfFrameSize)
+                                    {
+                                        obj->pitches->harmonicAcorr[iSignal] = obj->acorrs->array[iSignal][maxIndex * 2] / obj->acorrs->array[iSignal][maxIndex];
+                                    }
+                                    else
+                                    {
+                                        obj->pitches->harmonicAcorr[iSignal] = 0.0f;
+                                    }
+                                }
+                                else
+                                {
+                                    obj->pitches->array[iSignal] = 0;
+                                    obj->pitches->harmonicAcorr[iSignal] = 0.0f;
                                 }
                             }
+                            else
+                            {
+                                obj->pitches->array[iSignal] = 0;
+                                obj->pitches->harmonicAcorr[iSignal] = 0.0f;
+                            }
+
+                            pitch2category_process(obj->pitch2category, obj->pitches, obj->in2->tracks, obj->out->categories, iSignal);
+                            ++obj->pitch2category->processingTime[iSignal];
                         }
-                    }
-
-                    if (peakFound == 0x01)
-                    {
-                        obj->pitches->array[iSignal] = 16000 / maxIndex  ; // change to use freq from config
-//                        obj->pitches->harmonicAcorr[iSignal] = obj->acorrs->array[iSignal][maxIndex/2] / obj->acorrs->array[iSignal][maxIndex] ;
-
-                        if (maxIndex < obj->acorr2pitch->halfFrameSize ) 
-                        {
-                            obj->pitches->harmonicAcorr[iSignal] = obj->acorrs->array[iSignal][maxIndex*2] / obj->acorrs->array[iSignal][maxIndex] ;
-                        } else
-                        {
-                            obj->pitches->harmonicAcorr[iSignal] =0.0f;
-                        }
-
-
-
-                    }
-                    else
-                    {
-                        obj->pitches->array[iSignal] = 0;
-                        obj->pitches->harmonicAcorr[iSignal] = 0.0f;
                     }
                 }
                 else
                 {
-                    obj->pitches->array[iSignal] = 0;
-                    obj->pitches->harmonicAcorr[iSignal] = 0.0f;                    
+                    obj->pitch2category->processingTime[iSignal] = 0;
+                    obj->frames->numHops[iSignal] = 0;
+                    obj->pitch2category->activityTotal[iSignal] = 0;
+                    obj->pitch2category->rmsTotal[iSignal] = 0;
+                    obj->pitch2category->numPitchValues[iSignal] = 0;
+                    obj->pitch2category->pitchTotal[iSignal] = 0;
+                    obj->pitch2category->harmonicAcorrTotal[iSignal] = 0.0f;
                 }
             }
-
-            pitch2category_process(obj->pitch2category, obj->pitches, obj->in2->tracks, obj->out->categories);
         }
         else
         {

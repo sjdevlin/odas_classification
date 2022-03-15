@@ -7,6 +7,7 @@
         "freq2acorr.h": "c",
         "acorr2pitch.h": "c",
         "mod_resample.h": "c",
-        "mod_classify.h": "c"
+        "mod_classify.h": "c",
+        "category.h": "c"
     }
 }

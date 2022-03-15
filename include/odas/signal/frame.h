@@ -32,6 +32,7 @@
         unsigned int nSignals;
         unsigned int frameSize;
         float ** array;
+        unsigned int * numHops;
 
     } frames_obj;
 
