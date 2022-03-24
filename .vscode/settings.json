@@ -9,5 +9,6 @@
         "mod_resample.h": "c",
         "mod_classify.h": "c",
         "category.h": "c"
-    }
+    },
+    "cmake.configureOnOpen": true
 }
