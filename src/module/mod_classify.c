@@ -166,8 +166,9 @@ int mod_classify_process(mod_classify_obj *obj)
                         {
 //                            printf("\n", obj->frames->numHops[iSignal]);
                             ++obj->frames->numHops[iSignal];
-                            if (obj->frames->numHops[iSignal] == obj->frame2freq->halfFrameSize / obj->hop2frame->hopSize) //  this needs to be changed to work out the number
-                            {
+//                            if (obj->frames->numHops[iSignal] == obj->frame2freq->halfFrameSize / obj->hop2frame->hopSize) //  this needs to be changed to work out the number
+//                            if (obj->frames->numHops[iSignal] == 2) //  this needs to be changed to work out the number
+//                            {
 
                                 obj->frames->numHops[iSignal] = 0;  // reset hop counter
                                 totalRealAmplitudeSquared = 0.0f;
@@ -178,7 +179,7 @@ int mod_classify_process(mod_classify_obj *obj)
 
                                     obj->frame2freq->frame[iSample] = obj->frame2freq->win->array[iSample] * obj->frames->array[iSignal][iSample];
                                     //                                obj->frame2freq->frame[iSample] = obj->frames->array[iSignal][iSample];
-                                    totalRealAmplitudeSquared += obj->frame2freq->frameSize * powf(obj->frames->array[iSignal][iSample], 2);
+                                    totalRealAmplitudeSquared += powf((1024 * obj->frames->array[iSignal][iSample]), 2);
                                 }
 
                                 // rms NEEDED FOR classification
@@ -280,7 +281,7 @@ int mod_classify_process(mod_classify_obj *obj)
                                     pitch2category_process(obj->pitch2category, obj->pitches, obj->in2->tracks, obj->out->categories, iSignal);
                                     ++obj->pitch2category->processingTime[iSignal];
                                 }
-                            }
+//                            }
                         }
                     }
                 }

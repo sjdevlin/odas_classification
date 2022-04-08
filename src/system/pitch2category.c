@@ -240,6 +240,8 @@ void pitch2category_process(pitch2category_obj *obj, const pitches_obj *pitches,
 
         printf("%llu, %3.2f, %2.2f, %2.2f, %2.2f, %2.2f, %d \n", tracks->ids[iSep], pitchMean, relPitchVariance, relRmsVariance, relActivityVariance, harmonicAcorrMean, obj->numPitchValues[iSep]);
         //                printf("\nT, %llu, tot diff squared, %5.5f, Amp Mean, %5.5f, Amp Total, %d", tracks->ids[iSep], totalAmpDiffSquared ,amplitudeMean, obj->activityTotal[iSep]);
+//        printf("Diff Sqrd %3.2f, rms Mean %3.2f\n", totalRmsDiffSquared, rmsMean);
+
         obj->categories[iSep] = 0x01;
 
         // reset everything to zero
